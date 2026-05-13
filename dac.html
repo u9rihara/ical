@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>年忌カレンダー</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Shippori+Mincho:wght@400;600&display=swap');
+
+  :root {
+    --ink: #1a1410;
+    --paper: #f5f0e8;
+    --paper-dark: #ede6d4;
+    --gold: #8b6914;
+    --red: #8b1a1a;
+    --muted: #7a6e62;
+    --border: #c8b89a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Serif JP', serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    padding: 2.2rem 1rem 1.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: clamp(1.3rem, 3.5vw, 1.9rem);
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--ink);
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    margin-top: 0.4rem;
+  }
+
+  main {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.5);
+    border: 1px solid var(--border);
+    padding: 1.8rem 2rem;
+    margin-bottom: 1.6rem;
+  }
+
+  .section-label {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--border), transparent);
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+    margin-top: 1.1rem;
+  }
+  .field-label:first-of-type { margin-top: 0; }
+
+  input[type="text"],
+  input[type="date"] {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--border);
+    background: var(--paper);
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.95rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(139,105,20,0.1);
+  }
+
+  .notice {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.9rem;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+  }
+
+  /* 予定選択セクション（初期非表示） */
+  #schedule-section {
+    display: none;
+  }
+  #schedule-section.visible {
+    display: block;
+  }
+
+  .select-btns {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .select-btns button {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    padding: 0.28rem 0.75rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .select-btns button:hover {
+    background: var(--paper-dark);
+    color: var(--ink);
+  }
+
+  /* 予定リスト：1列 */
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .event-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 0.55rem 0.5rem;
+    border-bottom: 1px solid rgba(200,184,154,0.3);
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .event-item:first-child { border-top: 1px solid rgba(200,184,154,0.3); }
+
+  .event-item:hover { background: rgba(139,105,20,0.04); }
+
+  .event-item input[type="checkbox"] {
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    border: 1px solid var(--border);
+    background: var(--paper);
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .event-item input[type="checkbox"]:checked {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+
+  .event-item input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 2px; top: 0px;
+    width: 5px; height: 8px;
+    border: 1.5px solid #fff;
+    border-top: none; border-left: none;
+    transform: rotate(40deg);
+  }
+
+  .event-name {
+    font-size: 0.88rem;
+    letter-spacing: 0.05em;
+    min-width: 8em;
+  }
+
+  .event-date {
+    font-size: 0.82rem;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+
+  .event-dow {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  /* ダウンロードボタン */
+  .btn-download {
+    display: block;
+    width: 100%;
+    padding: 0.9rem;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.25em;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .btn-download:hover { background: #2d2520; }
+  .btn-download:active { transform: scale(0.99); }
+
+  .msg-error {
+    background: rgba(139,26,26,0.07);
+    border: 1px solid rgba(139,26,26,0.3);
+    color: var(--red);
+    font-size: 0.8rem;
+    padding: 0.65rem 0.9rem;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .msg-error.visible { display: block; }
+
+  @media (max-width: 480px) {
+    .card { padding: 1.4rem 1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>年忌カレンダー</h1>
+  <p class="subtitle">故人のご命日から法要の予定をカレンダー用ファイルに変換します</p>
+</header>
+
+<main>
+
+  <!-- 故人情報 -->
+  <div class="card">
+    <div class="section-label">故人情報</div>
+
+    <span class="field-label">お名前（戒名・俗名）</span>
+    <input type="text" id="name" placeholder="例：山田 太郎　/ 釋○○" oninput="onInfoChange()" />
+
+    <span class="field-label">ご命日</span>
+    <input type="date" id="death-date" onchange="onInfoChange()" />
+
+    <p class="notice">※ 入力された情報はこのページ内のみで使用され、外部に送信・保存されることはありません。</p>
+  </div>
+
+  <!-- 予定の選択（命日・初七日〜年忌） -->
+  <div id="schedule-section">
+    <div class="card">
+      <div class="section-label">予定の選択</div>
+      <div class="select-btns">
+        <button onclick="selectAll()">すべて選択</button>
+        <button onclick="selectNone()">すべて解除</button>
+      </div>
+      <div class="event-list" id="event-list"></div>
+    </div>
+
+    <div class="msg-error" id="error-msg"></div>
+
+    <button class="btn-download" onclick="generate()">iCalファイルをダウンロード</button>
+  </div>
+
+</main>
+
+<script>
+  const WEEKDAYS = ['日','月','火','水','木','金','土'];
+
+  // type: 'days' = 命日からの日数, 'years' = 満経過年数
+  const EVENT_DEFS = [
+    { name: '命日',           type: 'days',  offset: 0  },
+    { name: '初七日',         type: 'days',  offset: 6  },
+    { name: '二七日',         type: 'days',  offset: 13 },
+    { name: '三七日',         type: 'days',  offset: 20 },
+    { name: '四七日',         type: 'days',  offset: 27 },
+    { name: '五七日（三十五日）', type: 'days',  offset: 34 },
+    { name: '六七日',         type: 'days',  offset: 41 },
+    { name: '七七日（四十九日）', type: 'days', offset: 48 },
+    { name: '百ヶ日',         type: 'days',  offset: 99 },
+    { name: '一周忌',         type: 'years', offset: 1  },
+    { name: '三回忌',         type: 'years', offset: 2  },
+    { name: '七回忌',         type: 'years', offset: 6  },
+    { name: '十三回忌',       type: 'years', offset: 12 },
+    { name: '十七回忌',       type: 'years', offset: 16 },
+    { name: '二十三回忌',     type: 'years', offset: 22 },
+    { name: '二十七回忌',     type: 'years', offset: 26 },
+    { name: '三十三回忌',     type: 'years', offset: 32 },
+    { name: '三十七回忌',     type: 'years', offset: 36 },
+    { name: '四十三回忌',     type: 'years', offset: 42 },
+    { name: '四十七回忌',     type: 'years', offset: 46 },
+    { name: '五十回忌',       type: 'years', offset: 49 },
+  ];
+
+  function calcDate(deathDate, def) {
+    const d = new Date(deathDate);
+    if (def.type === 'days') {
+      d.setDate(d.getDate() + def.offset);
+    } else {
+      d.setFullYear(d.getFullYear() + def.offset);
+    }
+    return d;
+  }
+
+  function fmtDate(d) {
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+  }
+
+  function toIcalDate(d) {
+    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function uid() {
+    return 'dac-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  }
+
+  function escIcal(s) {
+    return s.replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+  }
+
+  // 故人情報の入力監視 → 年忌リストを再描画して表示
+  function onInfoChange() {
+    const name = document.getElementById('name').value.trim();
+    const deathVal = document.getElementById('death-date').value;
+    const section = document.getElementById('schedule-section');
+
+    if (name && deathVal) {
+      buildEventList(new Date(deathVal));
+      section.classList.add('visible');
+    } else {
+      section.classList.remove('visible');
+    }
+  }
+
+  function buildEventList(deathDate) {
+    const list = document.getElementById('event-list');
+    // 既存の状態を保存
+    const prevState = {};
+    list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      prevState[cb.dataset.idx] = cb.checked;
+    });
+
+    list.innerHTML = '';
+    EVENT_DEFS.forEach((def, i) => {
+      const d = calcDate(deathDate, def);
+      const dow = WEEKDAYS[d.getDay()] + '曜日';
+      const wasChecked = i in prevState ? prevState[i] : true;
+
+      const item = document.createElement('label');
+      item.className = 'event-item';
+      item.innerHTML = `
+        <input type="checkbox" data-idx="${i}" ${wasChecked ? 'checked' : ''} />
+        <span class="event-name">${def.name}</span>
+        <span class="event-date">${fmtDate(d)}</span>
+        <span class="event-dow">${dow}</span>
+      `;
+      list.appendChild(item);
+    });
+  }
+
+  function selectAll()  { document.querySelectorAll('#event-list input').forEach(c => c.checked = true); }
+  function selectNone() { document.querySelectorAll('#event-list input').forEach(c => c.checked = false); }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+  function clearError() {
+    document.getElementById('error-msg').classList.remove('visible');
+  }
+
+  function generate() {
+    clearError();
+    const name = document.getElementById('name').value.trim();
+    const deathVal = document.getElementById('death-date').value;
+
+    if (!name) { showError('お名前を入力してください。'); return; }
+    if (!deathVal) { showError('ご命日を入力してください。'); return; }
+
+    const checked = [...document.querySelectorAll('#event-list input:checked')].map(cb => {
+      return EVENT_DEFS[parseInt(cb.dataset.idx)];
+    });
+    if (checked.length === 0) { showError('予定を1つ以上選択してください。'); return; }
+
+    const deathDate = new Date(deathVal);
+    const now = new Date();
+    const stamp = now.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+
+    let lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//dac//Death Anniversary Calendar//JA',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      `X-WR-CALNAME:${escIcal(name + ' 法要')}`,
+      'X-WR-TIMEZONE:Asia/Tokyo',
+    ];
+
+    checked.forEach(def => {
+      const d = calcDate(deathDate, def);
+      const dtStart = toIcalDate(d);
+      const dtEnd   = toIcalDate(new Date(d.getTime() + 86400000));
+      const summary = escIcal(`${name} ${def.name}`);
+
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${uid()}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${dtStart}`,
+        `DTEND;VALUE=DATE:${dtEnd}`,
+        `SUMMARY:${summary}`,
+        'END:VEVENT',
+      );
+    });
+
+    lines.push('END:VCALENDAR');
+
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name}_法要.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+</script>
+</body>
+</html>
