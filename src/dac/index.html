@@ -98,13 +98,13 @@
     border: 1px solid var(--border);
     background: var(--paper);
     font-family: 'Noto Serif JP', serif;
-    font-size: 0.95rem;
+    font-size: 1rem;
     color: var(--ink);
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
 
-  input[type="date"] {
+  input[type="date"]::-webkit-date-and-time-value {
     line-height: 1.5;
     text-align: left;
   }
@@ -258,7 +258,7 @@
     <div class="section-label">故人情報</div>
 
     <span class="field-label">お名前（戒名・俗名）</span>
-    <input type="text" id="name" placeholder="例：山田 太郎　/ 釋○○" oninput="onInfoChange()" />
+    <input type="text" id="name" placeholder="例：山田 太郎　/ 釋○○" autocomplete="off" oninput="onInfoChange()" />
 
     <span class="field-label">ご命日</span>
     <input type="date" id="death-date" onchange="onInfoChange()" />
