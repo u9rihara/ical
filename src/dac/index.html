@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>年忌カレンダー</title>
+<title>命日カレンダー</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Shippori+Mincho:wght@400;600&display=swap');
 
@@ -88,7 +88,8 @@
   .field-label:first-of-type { margin-top: 0; }
 
   input[type="text"],
-  input[type="date"] {
+  input[type="date"],
+  select {
     width: 100%;
     padding: 0.6rem 0.85rem;
     border: 1px solid var(--border);
@@ -113,7 +114,6 @@
     line-height: 1.6;
   }
 
-  /* 予定選択セクション（初期非表示） */
   #schedule-section {
     display: none;
   }
@@ -144,7 +144,6 @@
     color: var(--ink);
   }
 
-  /* 予定リスト：1列 */
   .event-list {
     display: flex;
     flex-direction: column;
@@ -162,7 +161,6 @@
     user-select: none;
   }
   .event-item:first-child { border-top: 1px solid rgba(200,184,154,0.3); }
-
   .event-item:hover { background: rgba(139,105,20,0.04); }
 
   .event-item input[type="checkbox"] {
@@ -192,25 +190,11 @@
     transform: rotate(40deg);
   }
 
-  .event-name {
+  .event-label {
     font-size: 0.88rem;
     letter-spacing: 0.05em;
-    min-width: 8em;
   }
 
-  .event-date {
-    font-size: 0.82rem;
-    color: var(--muted);
-    letter-spacing: 0.03em;
-  }
-
-  .event-dow {
-    font-size: 0.75rem;
-    color: var(--muted);
-    margin-left: auto;
-  }
-
-  /* ダウンロードボタン */
   .btn-download {
     display: block;
     width: 100%;
@@ -247,13 +231,12 @@
 <body>
 
 <header>
-  <h1>年忌カレンダー</h1>
-  <p class="subtitle">故人のご命日から法要の予定をカレンダー用ファイルに変換します</p>
+  <h1>命日カレンダー</h1>
+  <p class="subtitle">故人の命日の予定をカレンダー用ファイルに変換します</p>
 </header>
 
 <main>
 
-  <!-- 故人情報 -->
   <div class="card">
     <div class="section-label">故人情報</div>
 
@@ -263,15 +246,31 @@
     <span class="field-label">ご命日</span>
     <input type="date" id="death-date" onchange="onInfoChange()" />
 
+    <span class="field-label">出力年数</span>
+    <select id="years" onchange="onInfoChange()">
+      <option value="1">一周忌まで</option>
+      <option value="2">三回忌まで</option>
+      <option value="6">七回忌まで</option>
+      <option value="12">十三回忌まで</option>
+      <option value="16">十七回忌まで</option>
+      <option value="22">二十三回忌まで</option>
+      <option value="26">二十七回忌まで</option>
+      <option value="32">三十三回忌まで</option>
+      <option value="36">三十七回忌まで</option>
+      <option value="42">四十三回忌まで</option>
+      <option value="46">四十七回忌まで</option>
+      <option value="49" selected>五十回忌まで</option>
+    </select>
+
     <p class="notice">※ 入力された情報はこのページ内のみで使用され、外部に送信・保存されることはありません。</p>
   </div>
 
-  <!-- 予定の選択（命日・初七日〜年忌） -->
   <div id="schedule-section">
     <div class="card">
       <div class="section-label">予定の選択</div>
       <div class="select-btns">
         <button onclick="selectAll()">すべて選択</button>
+        <button onclick="selectNenkiOnly()">年忌のみ</button>
         <button onclick="selectNone()">すべて解除</button>
       </div>
       <div class="event-list" id="event-list"></div>
@@ -285,60 +284,43 @@
 </main>
 
 <script>
-  const WEEKDAYS = ['日','月','火','水','木','金','土'];
+  const NENKI = {
+    1:  '一周忌',
+    2:  '三回忌',
+    6:  '七回忌',
+    12: '十三回忌',
+    16: '十七回忌',
+    22: '二十三回忌',
+    26: '二十七回忌',
+    32: '三十三回忌',
+    36: '三十七回忌',
+    42: '四十三回忌',
+    46: '四十七回忌',
+    49: '五十回忌',
+  };
 
-  // type: 'days' = 命日からの日数, 'years' = 満経過年数
-  const EVENT_DEFS = [
-    { name: '命日',           type: 'days',  offset: 0  },
-    { name: '初七日',         type: 'days',  offset: 6  },
-    { name: '二七日',         type: 'days',  offset: 13 },
-    { name: '三七日',         type: 'days',  offset: 20 },
-    { name: '四七日',         type: 'days',  offset: 27 },
-    { name: '五七日（三十五日）', type: 'days',  offset: 34 },
-    { name: '六七日',         type: 'days',  offset: 41 },
-    { name: '七七日（四十九日）', type: 'days', offset: 48 },
-    { name: '百ヶ日',         type: 'days',  offset: 99 },
-    { name: '一周忌',         type: 'years', offset: 1  },
-    { name: '三回忌',         type: 'years', offset: 2  },
-    { name: '七回忌',         type: 'years', offset: 6  },
-    { name: '十三回忌',       type: 'years', offset: 12 },
-    { name: '十七回忌',       type: 'years', offset: 16 },
-    { name: '二十三回忌',     type: 'years', offset: 22 },
-    { name: '二十七回忌',     type: 'years', offset: 26 },
-    { name: '三十三回忌',     type: 'years', offset: 32 },
-    { name: '三十七回忌',     type: 'years', offset: 36 },
-    { name: '四十三回忌',     type: 'years', offset: 42 },
-    { name: '四十七回忌',     type: 'years', offset: 46 },
-    { name: '五十回忌',       type: 'years', offset: 49 },
-  ];
-
-  function calcDate(deathDate, def) {
-    const d = new Date(deathDate);
-    if (def.type === 'days') {
-      d.setDate(d.getDate() + def.offset);
-    } else {
-      d.setFullYear(d.getFullYear() + def.offset);
-    }
+  function addYears(date, years) {
+    const d = new Date(date);
+    d.setFullYear(d.getFullYear() + years);
     return d;
   }
 
   function fmtDate(d) {
-    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
   }
 
   function toIcalDate(d) {
-    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
   }
 
   function uid() {
-    return 'dac-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+    return 'dac-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   }
 
   function escIcal(s) {
-    return s.replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+    return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
   }
 
-  // 故人情報の入力監視 → 年忌リストを再描画して表示
   function onInfoChange() {
     const name = document.getElementById('name').value.trim();
     const deathVal = document.getElementById('death-date').value;
@@ -353,33 +335,38 @@
   }
 
   function buildEventList(deathDate) {
+    const maxYears = parseInt(document.getElementById('years').value);
     const list = document.getElementById('event-list');
-    // 既存の状態を保存
+
     const prevState = {};
     list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      prevState[cb.dataset.idx] = cb.checked;
+      prevState[cb.dataset.year] = cb.checked;
     });
 
     list.innerHTML = '';
-    EVENT_DEFS.forEach((def, i) => {
-      const d = calcDate(deathDate, def);
-      const dow = WEEKDAYS[d.getDay()] + '曜日';
-      const wasChecked = i in prevState ? prevState[i] : true;
+    for (let y = 0; y <= maxYears; y++) {
+      const d = addYears(deathDate, y);
+      const nenki = NENKI[y] || null;
+      const label = fmtDate(d) + (nenki ? `（${nenki}）` : '');
+      const wasChecked = String(y) in prevState ? prevState[String(y)] : true;
 
       const item = document.createElement('label');
       item.className = 'event-item';
       item.innerHTML = `
-        <input type="checkbox" data-idx="${i}" ${wasChecked ? 'checked' : ''} />
-        <span class="event-name">${def.name}</span>
-        <span class="event-date">${fmtDate(d)}</span>
-        <span class="event-dow">${dow}</span>
+        <input type="checkbox" data-year="${y}" ${wasChecked ? 'checked' : ''} />
+        <span class="event-label">${label}</span>
       `;
       list.appendChild(item);
-    });
+    }
   }
 
-  function selectAll()  { document.querySelectorAll('#event-list input').forEach(c => c.checked = true); }
-  function selectNone() { document.querySelectorAll('#event-list input').forEach(c => c.checked = false); }
+  function selectAll()       { document.querySelectorAll('#event-list input').forEach(c => c.checked = true); }
+  function selectNone()      { document.querySelectorAll('#event-list input').forEach(c => c.checked = false); }
+  function selectNenkiOnly() {
+    document.querySelectorAll('#event-list input').forEach(c => {
+      c.checked = parseInt(c.dataset.year) in NENKI;
+    });
+  }
 
   function showError(msg) {
     const el = document.getElementById('error-msg');
@@ -398,30 +385,30 @@
     if (!name) { showError('お名前を入力してください。'); return; }
     if (!deathVal) { showError('ご命日を入力してください。'); return; }
 
-    const checked = [...document.querySelectorAll('#event-list input:checked')].map(cb => {
-      return EVENT_DEFS[parseInt(cb.dataset.idx)];
-    });
-    if (checked.length === 0) { showError('予定を1つ以上選択してください。'); return; }
+    const checkedYears = [...document.querySelectorAll('#event-list input:checked')]
+      .map(cb => parseInt(cb.dataset.year));
+    if (checkedYears.length === 0) { showError('予定を1つ以上選択してください。'); return; }
 
     const deathDate = new Date(deathVal);
     const now = new Date();
-    const stamp = now.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+    const stamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
-    let lines = [
+    const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//dac//Death Anniversary Calendar//JA',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      `X-WR-CALNAME:${escIcal(name + ' 法要')}`,
+      `X-WR-CALNAME:${escIcal(name + ' 命日')}`,
       'X-WR-TIMEZONE:Asia/Tokyo',
     ];
 
-    checked.forEach(def => {
-      const d = calcDate(deathDate, def);
+    checkedYears.forEach(y => {
+      const d = addYears(deathDate, y);
+      const nenki = NENKI[y] || null;
       const dtStart = toIcalDate(d);
       const dtEnd   = toIcalDate(new Date(d.getTime() + 86400000));
-      const summary = escIcal(`${name} ${def.name}`);
+      const summary = escIcal(`${name}の命日` + (nenki ? `（${nenki}）` : ''));
 
       lines.push(
         'BEGIN:VEVENT',
@@ -440,7 +427,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${name}_法要.ics`;
+    a.download = `${name}_命日.ics`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
